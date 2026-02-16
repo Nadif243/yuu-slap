@@ -1,8 +1,8 @@
 // Phaser game configuration
 const config = {
     type: Phaser.AUTO, // Auto-detect WebGL or Canvas
-    width: 800,
-    height: 600,
+    width: 1280,
+    height: 720,
     parent: 'game-container',
     backgroundColor: '#34495e',
     scene: [GameScene], // The game scene(s)
