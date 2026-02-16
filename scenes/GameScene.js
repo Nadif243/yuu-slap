@@ -1,5 +1,3 @@
-// PROTOTYPE MODEL
-
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
@@ -28,6 +26,7 @@ class GameScene extends Phaser.Scene {
         this.score = 0;
         this.clickTimestamps = []; // Array to track last clicks for APS
         this.isSlapping = false;   // Flag to prevent overlapping slaps
+        this.spaceKeyPressed = false; // Track if space is currently held
 
         // ===== CREATE PLACEHOLDER VISUALS =====
         // To replace with actual art later /////////////////////////////////////////////////////////
@@ -41,6 +40,16 @@ class GameScene extends Phaser.Scene {
 
         // Hand (will animate in from side)
         this.hand = this.add.rectangle(100, 280, 80, 100, 0xffd700).setVisible(false);
+
+        // Store original positions to prevent drift during idle shake
+        this.originalPositions = {
+            baseX: 400,
+            baseY: 300,
+            cheekNormalX: 350,
+            cheekNormalY: 280,
+            cheekSlappedX: 350,
+            cheekSlappedY: 282
+        };
 
         // ===== UI ELEMENTS =====
         this.scoreText = this.add.text(20, 20, 'Score: 0', {
@@ -58,8 +67,18 @@ class GameScene extends Phaser.Scene {
         // Phaser's input system handles mouse, touch, and keyboard automatically
         this.input.on('pointerdown', () => this.onSlap());
 
-        // Keyboard input (spacebar for example)
-        this.input.keyboard.on('keydown-SPACE', () => this.onSlap());
+        // Keyboard input - only trigger once per press, not on hold
+        this.input.keyboard.on('keydown-SPACE', () => {
+            if (!this.spaceKeyPressed) {
+                this.spaceKeyPressed = true;
+                this.onSlap();
+            }
+        });
+
+        // Reset flag when key is released
+        this.input.keyboard.on('keyup-SPACE', () => {
+            this.spaceKeyPressed = false;
+        });
 
         // ===== IDLE SHAKE ANIMATION =====
         // Subtle shake effect when idle
@@ -126,10 +145,10 @@ class GameScene extends Phaser.Scene {
 
     calculateAnimationDuration(currentAPS) {
         // Base duration: 300ms for full animation at slow clicking
-        // Minimum duration: 50ms (super fast, just a flash)
+        // Minimum duration: 20ms (as fast as ~1 frame can render)
 
         const baseDuration = 300;
-        const minDuration = 2;
+        const minDuration = 20;
         const speedFactor = 200; // How much APS affects speed
 
         // Higher APS = shorter duration
@@ -145,7 +164,7 @@ class GameScene extends Phaser.Scene {
         this.isSlapping = true;
 
         // PHASE 1: Hand appears and moves to cheek
-        this.hand.setPosition(600, 280); // Start off-screen right
+        this.hand.setPosition(100, 280); // Start off-screen left
         this.hand.setVisible(true);
 
         this.tweens.add({
@@ -161,11 +180,11 @@ class GameScene extends Phaser.Scene {
                 // Character shake on impact
                 this.shakeCharacter();
 
-                // PHASE 3: Hand retracts
+                // PHASE 3: Hand retracts DOWN and slightly RIGHT (follow-through)
                 this.tweens.add({
                     targets: this.hand,
-                    x: 600, // Move back off-screen
-                    y: 320, // Slightly lower (follow-through)
+                    x: 380, // Move back off-screen
+                    y: 340, // Slightly lower (follow-through)
                     duration: duration * 0.4, // 40% of animation time
                     ease: 'Power2',
                     onComplete: () => {
@@ -188,16 +207,22 @@ class GameScene extends Phaser.Scene {
         // Shake with decreasing intensity
         this.tweens.add({
             targets: [this.characterBase, this.cheekNormal, this.cheekSlapped],
-            x: originalX + Phaser.Math.Between(-8, 8),
-            y: originalY + Phaser.Math.Between(-8, 8),
+            x: originalX + Phaser.Math.Between(-4, 4),
+            y: originalY + Phaser.Math.Between(-4, 4),
             duration: 50,
             yoyo: true,
-            repeat: 2,
+            repeat: 1, // Reduced from 2 to 1 for less shake
             onComplete: () => {
-                // Return to original position
+                // Return to original position using stored values
                 this.characterBase.setPosition(originalX, originalY);
-                this.cheekNormal.setPosition(350, 280);
-                this.cheekSlapped.setPosition(350, 285);
+                this.cheekNormal.setPosition(
+                    this.originalPositions.cheekNormalX,
+                    this.originalPositions.cheekNormalY
+                );
+                this.cheekSlapped.setPosition(
+                    this.originalPositions.cheekSlappedX,
+                    this.originalPositions.cheekSlappedY
+                );
             }
         });
     }
@@ -206,12 +231,22 @@ class GameScene extends Phaser.Scene {
         // Subtle idle breathing/shaking animation
         if (this.isSlapping) return; // Don't shake while slapping
 
+        // Reduced intensity: -1 to 1 pixels, oscillate around original position
         const offsetX = Phaser.Math.Between(-1, 1);
         const offsetY = Phaser.Math.Between(-1, 1);
 
-        this.characterBase.x += offsetX;
-        this.characterBase.y += offsetY;
-        this.cheekNormal.x += offsetX;
-        this.cheekNormal.y += offsetY;
+        // Use original positions as anchor - prevents drift
+        this.characterBase.setPosition(
+            this.originalPositions.baseX + offsetX,
+            this.originalPositions.baseY + offsetY
+        );
+        this.cheekNormal.setPosition(
+            this.originalPositions.cheekNormalX + offsetX,
+            this.originalPositions.cheekNormalY + offsetY
+        );
+        this.cheekSlapped.setPosition(
+            this.originalPositions.cheekSlappedX + offsetX,
+            this.originalPositions.cheekSlappedY + offsetY
+        );
     }
 }
