@@ -4,249 +4,260 @@ class GameScene extends Phaser.Scene {
     }
 
     preload() {
-        // TODO: Load actual assets when ready
-        // For now, use Phaser's built-in graphics
+        // Load all assets
+        this.load.image('background', 'assets/images/background.png');
+        this.load.image('character-idle-1', 'assets/images/character-idle-1.png');
+        this.load.image('character-idle-2', 'assets/images/character-idle-1.png'); // Temp: same as idle-1
+        this.load.image('cheek-0', 'assets/images/cheek-0.png');
+        this.load.image('cheek-1', 'assets/images/cheek-1.png');
+        this.load.image('cheek-2', 'assets/images/cheek-2.png');
+        this.load.image('cheek-3', 'assets/images/cheek-3.png');
+        this.load.image('cheek-4', 'assets/images/cheek-4.png');
+        this.load.image('hand-0', 'assets/images/hand-0.png');
+        this.load.image('hand-1', 'assets/images/hand-1.png');
+        this.load.image('hand-2', 'assets/images/hand-2.png');
 
-        // Placeholder for now are to: Create colored rectangles as images
-        // this.load.image('character', 'assets/images/character-base.png');
-        // this.load.image('cheek-normal', 'assets/images/cheek-normal.png');
-        // this.load.image('cheek-slapped', 'assets/images/cheek-slapped.png');
-
-        // this.load.spritesheet('hand', 'assets/images/hand-spritesheet.png', {
-        //     frameWidth: 100,
-        //     frameHeight: 100
-        // });
-
-        // this.load.audio('bgm', 'assets/audio/bgm.mp3');
-        // this.load.audio('slap-sfx', 'assets/audio/slap-sfx.mp3');
+        console.log('Loading all assets...');
     }
 
     create() {
+        console.log('GameScene started');
+
         // ===== GAME STATE =====
         this.score = 0;
-        this.clickTimestamps = []; // Array to track last clicks for APS
-        this.isSlapping = false;   // Flag to prevent overlapping slaps
-        this.spaceKeyPressed = false; // Track if space is currently held
+        this.clickTimestamps = []; // For APS calculation
 
-        // ===== CREATE PLACEHOLDER VISUALS =====
-        // To replace with actual art later /////////////////////////////////////////////////////////
+        // ===== BACKGROUND =====
+        const bg = this.add.image(640, 360, 'background');
+        bg.setDisplaySize(1280, 720);
 
-        // Character base (background)
-        this.characterBase = this.add.rectangle(400, 300, 200, 300, 0xecf0f1);
+        // ===== CHARACTER BASE =====
+        const characterX = 842;
+        const characterY = 360;
+        const scale = 720 / 927;
 
-        // Cheeks (swap between normal and slapped)
-        this.cheekNormal = this.add.circle(350, 280, 30, 0xffb6c1).setVisible(true);
-        this.cheekSlapped = this.add.ellipse(350, 285, 35, 25, 0xff69b4).setVisible(false);
+        this.characterBase = this.add.image(characterX, characterY, 'character-idle-1');
+        this.characterBase.setScale(scale);
 
-        // Hand (will animate in from side)
-        this.hand = this.add.rectangle(100, 280, 80, 100, 0xffd700).setVisible(false);
+        this.characterIdle2 = this.add.image(characterX, characterY, 'character-idle-2');
+        this.characterIdle2.setScale(scale);
+        this.characterIdle2.setVisible(false);
 
-        // Store original positions to prevent drift during idle shake
-        this.originalPositions = {
-            baseX: 400,
-            baseY: 300,
-            cheekNormalX: 350,
-            cheekNormalY: 280,
-            cheekSlappedX: 350,
-            cheekSlappedY: 282
-        };
+        this.currentIdleFrame = 1;
 
-        // ===== UI ELEMENTS =====
-        this.scoreText = this.add.text(20, 20, 'Score: 0', {
-            fontSize: '24px',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        });
-
-        this.apsText = this.add.text(20, 50, 'APS: 0', {
-            fontSize: '20px',
-            color: '#ffffff'
-        });
-
-        // ===== INPUT HANDLING =====
-        // Phaser's input system handles mouse, touch, and keyboard automatically
-        this.input.on('pointerdown', () => this.onSlap());
-
-        // Keyboard input - only trigger once per press, not on hold
-        this.input.keyboard.on('keydown-SPACE', () => {
-            if (!this.spaceKeyPressed) {
-                this.spaceKeyPressed = true;
-                this.onSlap();
-            }
-        });
-
-        // Reset flag when key is released
-        this.input.keyboard.on('keyup-SPACE', () => {
-            this.spaceKeyPressed = false;
-        });
-
-        // ===== IDLE SHAKE ANIMATION =====
-        // Subtle shake effect when idle
+        // ===== IDLE ANIMATION (frame swapping) =====
         this.time.addEvent({
-            delay: 100, // Every 100ms
-            callback: () => this.applyIdleShake(),
+            delay: 150,
+            callback: () => {
+                this.currentIdleFrame = this.currentIdleFrame === 1 ? 2 : 1;
+                this.characterBase.setVisible(this.currentIdleFrame === 1);
+                this.characterIdle2.setVisible(this.currentIdleFrame === 2);
+            },
             loop: true
         });
 
-        // ===== AUDIO (placeholder) =====
-        // this.bgm = this.sound.add('bgm', { loop: true, volume: 0.5 });
-        // this.bgm.play();
-        // this.slapSfx = this.sound.add('slap-sfx', { volume: 0.7 });
+        // ===== CHEEKS =====
+        const cheekX = 630;
+        const cheekY = 504;
+        const cheekScale = 720 / 927;
 
-        console.log('GameScene created! Click or press SPACE to slap.');
+        this.cheekFrames = [];
+        for (let i = 0; i < 5; i++) {
+            const cheek = this.add.image(cheekX, cheekY, `cheek-${i}`);
+            cheek.setScale(cheekScale);
+            cheek.setVisible(i === 1); // Start with frame 1 (idle)
+            this.cheekFrames.push(cheek);
+        }
+
+        this.currentCheekFrame = 1;
+
+        // ===== HAND =====
+        const handScale = 720 / 927; // Same as character/cheek
+
+        // Create all 3 hand frames, initially hidden
+        this.handFrames = [];
+        for (let i = 0; i < 3; i++) {
+            const hand = this.add.image(0, 0, `hand-${i}`);
+            hand.setScale(handScale);
+            hand.setVisible(false);
+            this.handFrames.push(hand);
+        }
+
+        console.log('✓ All visuals loaded');
+
+        // ===== UI ELEMENTS =====
+        this.scoreText = this.add.text(20, 20, 'Score: 0', {
+            fontSize: '28px',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        });
+
+        this.apsText = this.add.text(20, 60, 'APS: 0', {
+            fontSize: '24px',
+            color: '#ffff00',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        });
+
+        // ===== DEBUG UI =====
+        this.add.text(20, 680, 'Click or press SPACE to slap', {
+            fontSize: '16px',
+            color: '#aaaaaa',
+            backgroundColor: '#000000'
+        });
+
+        // ===== SLAP INPUT =====
+        this.isSlapping = false; // Flag to prevent spam
+
+        // Mouse/touch input
+        this.input.on('pointerdown', () => {
+            this.playSlapAnimation();
+        });
+
+        // Keyboard input (spacebar)
+        this.input.keyboard.on('keydown-SPACE', () => {
+            this.playSlapAnimation();
+        });
     }
 
-    update(time, delta) {
-        // This runs every frame (~60 times per second)
+    // Main slap animation - synchronized hand + cheek
+    playSlapAnimation() {
+        if (this.isSlapping) return; // Don't allow overlapping animations
 
-        // Update APS display with rolling window calculation
-        const currentAPS = this.calculateAPS();
-        this.apsText.setText(`APS: ${currentAPS}`);
+        this.isSlapping = true;
+        console.log('Slap animation started');
 
-        // Clean up old timestamps (keep only last 2 seconds of data)
-        const twoSecondsAgo = Date.now() - 2000;
-        this.clickTimestamps = this.clickTimestamps.filter(t => t > twoSecondsAgo);
-    }
-
-    // ===== CORE GAME LOGIC =====
-
-    onSlap() {
-        // Don't allow new slap if one is already animating
-        if (this.isSlapping) return;
-
-        // Record this click for APS calculation
-        this.clickTimestamps.push(Date.now());
-
-        // Increment score
+        // Track this slap
         this.score++;
         this.scoreText.setText(`Score: ${this.score}`);
+        this.clickTimestamps.push(Date.now());
 
         // Calculate animation speed based on current APS
         const currentAPS = this.calculateAPS();
-        const animDuration = this.calculateAnimationDuration(currentAPS);
+        const frameDuration = this.calculateFrameDuration(currentAPS);
 
-        // Play the slap animation
-        this.playSlapAnimation(animDuration);
+        console.log(`Slap! Score: ${this.score}, APS: ${currentAPS}, Frame Duration: ${frameDuration}ms`);
 
-        // Play SFX (when audio ready)
-        // this.slapSfx.play();
+        const cheekX = 630;
+        const cheekY = 504;
 
-        console.log(`Slap! Score: ${this.score}, APS: ${currentAPS}, Anim Duration: ${animDuration}ms`);
+        // FRAME 1: No hand + cheek-0
+        this.cheekFrames[this.currentCheekFrame].setVisible(false);
+        this.cheekFrames[0].setVisible(true);
+        this.currentCheekFrame = 0;
+
+        // FRAME 2: hand-0 (left side, bottom-aligned) + cheek-1
+        this.time.delayedCall(frameDuration, () => {
+            // Position hand-0: left side of screen, bottom-aligned
+            // hand-0 is 350x860, scaled to ~272x669
+            const hand0X = 0; // Left edge (will adjust based on anchor)
+            const hand0Y = 720; // Bottom of screen
+
+            this.handFrames[0].setOrigin(0, 1); // Bottom-left anchor
+            this.handFrames[0].setPosition(hand0X, hand0Y);
+            this.handFrames[0].setVisible(true);
+
+            // Cheek frame 1
+            this.cheekFrames[0].setVisible(false);
+            this.cheekFrames[1].setVisible(true);
+            this.currentCheekFrame = 1;
+        });
+
+        // FRAME 3: hand-1 (on cheek, right side aligned to cheek, bottom to screen) + cheek-2
+        this.time.delayedCall(frameDuration * 2, () => {
+            this.handFrames[0].setVisible(false);
+
+            // Position hand-1: right edge aligned to cheek right, bottom to screen
+            // hand-1 is 840x490, scaled to ~653x381
+            // Cheek is at 630, so align hand's right edge there
+            const hand1X = cheekX; // Cheek X position
+            const hand1Y = 720; // Bottom of screen
+
+            this.handFrames[1].setOrigin(1, 1); // Bottom-right anchor
+            this.handFrames[1].setPosition(hand1X, hand1Y);
+            this.handFrames[1].setVisible(true);
+
+            // Cheek frame 2
+            this.cheekFrames[1].setVisible(false);
+            this.cheekFrames[2].setVisible(true);
+            this.currentCheekFrame = 2;
+        });
+
+        // FRAME 4: hand-2 (below cheek, bottom to screen) + cheek-3
+        this.time.delayedCall(frameDuration * 3, () => {
+            this.handFrames[1].setVisible(false);
+
+            // Position hand-2: below cheek, bottom-aligned
+            // hand-2 is 380x100, scaled to ~295x78
+            const hand2X = cheekX;
+            const hand2Y = 720; // Bottom of screen
+
+            this.handFrames[2].setOrigin(0.5, 1); // Bottom-center anchor
+            this.handFrames[2].setPosition(hand2X, hand2Y);
+            this.handFrames[2].setVisible(true);
+
+            // Cheek frame 3
+            this.cheekFrames[2].setVisible(false);
+            this.cheekFrames[3].setVisible(true);
+            this.currentCheekFrame = 3;
+        });
+
+        // FRAME 5: No hand + cheek-4
+        this.time.delayedCall(frameDuration * 4, () => {
+            this.handFrames[2].setVisible(false);
+
+            // Cheek frame 4
+            this.cheekFrames[3].setVisible(false);
+            this.cheekFrames[4].setVisible(true);
+            this.currentCheekFrame = 4;
+        });
+
+        // FRAME 6: No hand + cheek-1 (back to idle)
+        this.time.delayedCall(frameDuration * 5, () => {
+            // Back to idle
+            this.cheekFrames[4].setVisible(false);
+            this.cheekFrames[1].setVisible(true);
+            this.currentCheekFrame = 1;
+
+            this.isSlapping = false;
+            console.log('Slap animation complete');
+        });
+    }
+
+    update(time, delta) {
+        // Calculate and display current APS
+        const currentAPS = this.calculateAPS();
+        this.apsText.setText(`APS: ${currentAPS}`);
+
+        // Clean up old timestamps (keep only last 2 seconds)
+        const twoSecondsAgo = Date.now() - 2000;
+        this.clickTimestamps = this.clickTimestamps.filter(t => t > twoSecondsAgo);
     }
 
     calculateAPS() {
         // Rolling window: count clicks in last 1 second
         const now = Date.now();
         const oneSecondAgo = now - 1000;
-
         const recentClicks = this.clickTimestamps.filter(t => t > oneSecondAgo);
         return recentClicks.length;
     }
 
-    calculateAnimationDuration(currentAPS) {
-        // Base duration: 300ms for full animation at slow clicking
-        // Minimum duration: 20ms (as fast as ~1 frame can render)
+    calculateFrameDuration(currentAPS) {
+        // Base: 100ms per frame at 0 APS (600ms total animation)
+        // Min: 20ms per frame at high APS (120ms total animation)
 
-        const baseDuration = 300;
+        const baseDuration = 100;
         const minDuration = 20;
-        const speedFactor = 200; // How much APS affects speed
+        const speedFactor = 20; // How much each APS point reduces duration
 
-        // Higher APS = shorter duration
+        // Higher APS = shorter frame duration = faster animation
         const duration = Math.max(
             minDuration,
             baseDuration - (currentAPS * speedFactor)
         );
 
         return duration;
-    }
-
-    playSlapAnimation(duration) {
-        this.isSlapping = true;
-
-        // PHASE 1: Hand appears and moves to cheek
-        this.hand.setPosition(100, 280); // Start off-screen left
-        this.hand.setVisible(true);
-
-        this.tweens.add({
-            targets: this.hand,
-            x: 350, // Move to cheek position
-            duration: duration * 0.6, // 60% of total animation time
-            ease: 'Power2',
-            onComplete: () => {
-                // PHASE 2: Impact! Swap to slapped cheek
-                this.cheekNormal.setVisible(false);
-                this.cheekSlapped.setVisible(true);
-
-                // Character shake on impact
-                this.shakeCharacter();
-
-                // PHASE 3: Hand retracts DOWN and slightly RIGHT (follow-through)
-                this.tweens.add({
-                    targets: this.hand,
-                    x: 380, // Move back off-screen
-                    y: 340, // Slightly lower (follow-through)
-                    duration: duration * 0.4, // 40% of animation time
-                    ease: 'Power2',
-                    onComplete: () => {
-                        // Reset everything
-                        this.hand.setVisible(false);
-                        this.cheekNormal.setVisible(true);
-                        this.cheekSlapped.setVisible(false);
-                        this.isSlapping = false;
-                    }
-                });
-            }
-        });
-    }
-
-    shakeCharacter() {
-        // Store original positions
-        const originalX = this.characterBase.x;
-        const originalY = this.characterBase.y;
-
-        // Shake with decreasing intensity
-        this.tweens.add({
-            targets: [this.characterBase, this.cheekNormal, this.cheekSlapped],
-            x: originalX + Phaser.Math.Between(-4, 4),
-            y: originalY + Phaser.Math.Between(-4, 4),
-            duration: 50,
-            yoyo: true,
-            repeat: 1, // Reduced from 2 to 1 for less shake
-            onComplete: () => {
-                // Return to original position using stored values
-                this.characterBase.setPosition(originalX, originalY);
-                this.cheekNormal.setPosition(
-                    this.originalPositions.cheekNormalX,
-                    this.originalPositions.cheekNormalY
-                );
-                this.cheekSlapped.setPosition(
-                    this.originalPositions.cheekSlappedX,
-                    this.originalPositions.cheekSlappedY
-                );
-            }
-        });
-    }
-
-    applyIdleShake() {
-        // Subtle idle breathing/shaking animation
-        if (this.isSlapping) return; // Don't shake while slapping
-
-        // Reduced intensity: -1 to 1 pixels, oscillate around original position
-        const offsetX = Phaser.Math.Between(-1, 1);
-        const offsetY = Phaser.Math.Between(-1, 1);
-
-        // Use original positions as anchor - prevents drift
-        this.characterBase.setPosition(
-            this.originalPositions.baseX + offsetX,
-            this.originalPositions.baseY + offsetY
-        );
-        this.cheekNormal.setPosition(
-            this.originalPositions.cheekNormalX + offsetX,
-            this.originalPositions.cheekNormalY + offsetY
-        );
-        this.cheekSlapped.setPosition(
-            this.originalPositions.cheekSlappedX + offsetX,
-            this.originalPositions.cheekSlappedY + offsetY
-        );
     }
 }
