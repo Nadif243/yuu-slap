@@ -27,6 +27,9 @@ class GameScene extends Phaser.Scene {
         this.score = 0;
         this.clickTimestamps = []; // For APS calculation
 
+        // Load high score from localStorage
+        this.highScore = parseInt(localStorage.getItem('slapGameHighScore')) || 0;
+
         // ===== BACKGROUND =====
         const bg = this.add.image(640, 360, 'background');
         bg.setDisplaySize(1280, 720);
@@ -94,6 +97,13 @@ class GameScene extends Phaser.Scene {
             padding: { x: 10, y: 5 }
         });
 
+        this.highScoreText = this.add.text(20, 100, `High Score: ${this.highScore}`, {
+            fontSize: '20px',
+            color: '#aaaaaa',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        });
+
         this.apsText = this.add.text(20, 60, 'APS: 0', {
             fontSize: '24px',
             color: '#ffff00',
@@ -110,6 +120,10 @@ class GameScene extends Phaser.Scene {
 
         // ===== SLAP INPUT =====
         this.isSlapping = false; // Flag to prevent spam
+        this.spaceKeyPressed = false; // Track if spacebar is held
+
+        // Disable right-click context menu on canvas
+        this.input.mouse.disableContextMenu();
 
         // Mouse/touch input
         this.input.on('pointerdown', () => {
@@ -117,8 +131,16 @@ class GameScene extends Phaser.Scene {
         });
 
         // Keyboard input (spacebar)
-        this.input.keyboard.on('keydown-SPACE', () => {
-            this.playSlapAnimation();
+        this.input.keyboard.on('keydown', () => {
+            if (!this.spaceKeyPressed) {
+                this.spaceKeyPressed = true;
+                this.playSlapAnimation();
+            }
+        });
+
+        // Reset flag when spacebar released
+        this.input.keyboard.on('keyup', () => {
+            this.spaceKeyPressed = false;
         });
     }
 
@@ -133,6 +155,13 @@ class GameScene extends Phaser.Scene {
         this.score++;
         this.scoreText.setText(`Score: ${this.score}`);
         this.clickTimestamps.push(Date.now());
+
+        // Check if new high score
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            this.highScoreText.setText(`High Score: ${this.highScore}`);
+            localStorage.setItem('slapGameHighScore', this.highScore.toString());
+        }
 
         // Calculate animation speed based on current APS
         const currentAPS = this.calculateAPS();
