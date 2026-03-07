@@ -19,42 +19,36 @@ class StartScene extends Phaser.Scene {
         const character = this.add.image(842, 360, 'character-idle-1');
         character.setScale(scale);
 
-        // Load high score
-        const highScore = parseInt(localStorage.getItem('slapGameHighScore')) || 0;
+        // Dark overlay (semi-transparent black)
+        const overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.6);
 
         // ===== TITLE =====
-        const title = this.add.text(640, 200, 'SLAP GAME', {
-            fontSize: '72px',
+        const title = this.add.text(640, 200, 'Yuu-Slap', {
+            fontSize: '80px',
+            fontFamily: 'Quicksand, sans-serif',
             fontStyle: 'bold',
-            color: '#ffffff',
-            stroke: '#000000',
+            color: '#f5c9a5',
+            stroke: '#570d44',
             strokeThickness: 8
         });
         title.setOrigin(0.5);
 
-        // ===== SUBTITLE =====
-        if (highScore > 0) {
-            this.add.text(640, 280, `High Score: ${highScore}`, {
-                fontSize: '32px',
-                color: '#ffff00',
-                stroke: '#000000',
-                strokeThickness: 4
-            }).setOrigin(0.5);
-        }
-
         // ===== INSTRUCTION =====
-        const instruction = this.add.text(640, 500, 'Click anywhere to start', {
-            fontSize: '28px',
+        const instructionBg = this.add.graphics();
+        instructionBg.fillStyle(0x000000, 0.67);
+        instructionBg.fillRoundedRect(520, 470, 240, 64, 10);
+        const instruction = this.add.text(640, 500, 'Click to start', {
+            fontSize: '32px',
+            fontFamily: 'Quicksand, sans-serif',
             color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 20, y: 10 }
+            padding: { x: 30, y: 15 }
         });
         instruction.setOrigin(0.5);
 
         // Pulsing animation on instruction text
         this.tweens.add({
             targets: instruction,
-            alpha: 0.3,
+            alpha: 0.4,
             duration: 800,
             yoyo: true,
             repeat: -1

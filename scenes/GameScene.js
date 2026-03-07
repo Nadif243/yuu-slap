@@ -24,11 +24,10 @@ class GameScene extends Phaser.Scene {
         console.log('GameScene started');
 
         // ===== GAME STATE =====
-        this.score = 0;
         this.clickTimestamps = []; // For APS calculation
 
-        // Load high score from localStorage
-        this.highScore = parseInt(localStorage.getItem('slapGameHighScore')) || 0;
+        // Load total score from localStorage (persists forever)
+        this.totalScore = parseInt(localStorage.getItem('slapGameTotalScore')) || 0;
 
         // ===== BACKGROUND =====
         const bg = this.add.image(640, 360, 'background');
@@ -89,55 +88,100 @@ class GameScene extends Phaser.Scene {
         console.log('✓ All visuals loaded');
 
         // ===== UI ELEMENTS =====
-        this.scoreText = this.add.text(20, 20, 'Score: 0', {
+        // Score display
+        const scoreBg = this.add.graphics();
+        scoreBg.fillStyle(0x000000, 0.67); // 0.67 alpha = aa in hex
+        scoreBg.fillRoundedRect(12, 10, 500, 90, 10); // x, y, width, height, radius
+        this.scoreText = this.add.text(20, 13, `Press any key to correct this red panda.\n${this.totalScore} Hit!`, {
             fontSize: '28px',
-            color: '#ffffff',
+            fontFamily: 'Quicksand, sans-serif',
             fontStyle: 'bold',
-            backgroundColor: '#000000',
-            padding: { x: 10, y: 5 }
+            color: '#ffffff',
+            padding: { x: 10, y: 8 },
+            lineSpacing: 8
         });
 
-        this.highScoreText = this.add.text(20, 100, `High Score: ${this.highScore}`, {
+        // APS display
+        const apsBg = this.add.graphics();
+        apsBg.fillStyle(0x000000, 0.67);
+        apsBg.fillRoundedRect(12, 100, 120, 40, 10);
+        this.apsText = this.add.text(20, 103, '(0 APS)', {
             fontSize: '20px',
-            color: '#aaaaaa',
-            backgroundColor: '#000000',
-            padding: { x: 10, y: 5 }
-        });
-
-        // Reset button
-        const resetBtn = this.add.text(20, 135, '[Reset High Score]', {
-            fontSize: '14px',
-            color: '#ff6666',
-            backgroundColor: '#000000',
-            padding: { x: 5, y: 3 }
-        });
-        resetBtn.setInteractive({ useHandCursor: true });
-        resetBtn.on('pointerdown', () => {
-            localStorage.removeItem('slapGameHighScore');
-            this.highScore = 0;
-            this.highScoreText.setText('High Score: 0');
-            console.log('High score reset!');
-        });
-        resetBtn.on('pointerover', () => resetBtn.setColor('#ff0000'));
-        resetBtn.on('pointerout', () => resetBtn.setColor('#ff6666'));
-
-        this.apsText = this.add.text(20, 60, 'APS: 0', {
-            fontSize: '24px',
+            fontFamily: 'Arial, sans-serif',
             color: '#ffff00',
-            backgroundColor: '#000000',
             padding: { x: 10, y: 5 }
         });
 
-        // ===== DEBUG UI =====
-        this.add.text(20, 680, 'Click or press SPACE to slap', {
+        // Reset button (rounded rectangle)
+        const resetBtn = this.add.graphics();
+        resetBtn.fillStyle(0xcc4444, 1);
+        resetBtn.fillRoundedRect(1100, 15, 160, 50, 15); // x, y, width, height, corner radius
+        resetBtn.lineStyle(2, 0xff6666, 1);
+        resetBtn.strokeRoundedRect(1100, 15, 160, 50, 15);
+
+        // Make it interactive (create invisible hitbox)
+        const resetHitbox = this.add.rectangle(1180, 40, 160, 50, 0x000000, 0);
+        resetHitbox.setInteractive({ useHandCursor: true });
+
+        const resetText = this.add.text(1180, 38, 'Reset', {
+            fontSize: '24px',
+            fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold',
+            color: '#ffffff'
+        });
+        resetText.setOrigin(0.5);
+
+        // Reset button interactions
+        resetHitbox.on('pointerover', () => {
+            resetBtn.clear();
+            resetBtn.fillStyle(0xff5555, 1);
+            resetBtn.fillRoundedRect(1100, 15, 160, 50, 15);
+            resetBtn.lineStyle(2, 0xff6666, 1);
+            resetBtn.strokeRoundedRect(1100, 15, 160, 50, 15);
+        });
+
+        resetHitbox.on('pointerout', () => {
+            resetBtn.clear();
+            resetBtn.fillStyle(0xcc4444, 1);
+            resetBtn.fillRoundedRect(1100, 15, 160, 50, 15);
+            resetBtn.lineStyle(2, 0xff6666, 1);
+            resetBtn.strokeRoundedRect(1100, 15, 160, 50, 15);
+        });
+
+        resetHitbox.on('pointerdown', (pointer) => {
+            pointer.event.stopPropagation(); // Prevent slap
+
+            // Set flag to prevent slap
+            this.isResetting = true;
+
+            // Reset total score
+            this.totalScore = 0;
+            localStorage.setItem('slapGameTotalScore', '0');
+            this.scoreText.setText(`Press any key to correct this red panda.\n${this.totalScore} Hit!`);
+
+            console.log('Total score reset to 0');
+
+            // Clear flag after a short delay
+            this.time.delayedCall(100, () => {
+                this.isResetting = false;
+            });
+        });
+
+        // Instruction text
+        const instructionBg = this.add.graphics();
+        instructionBg.fillStyle(0x000000, 0.67);
+        instructionBg.fillRoundedRect(12, 670, 240, 35, 10);
+        this.add.text(20, 673, 'Click or press any key to slap', {
             fontSize: '16px',
+            fontFamily: 'Arial, sans-serif',
             color: '#aaaaaa',
-            backgroundColor: '#000000'
+            padding: { x: 8, y: 5 }
         });
 
         // ===== SLAP INPUT =====
         this.isSlapping = false; // Flag to prevent spam
-        this.spaceKeyPressed = false; // Track if spacebar is held
+        this.anyKeyPressed = false; // Track if any key button is held
+        this.isResetting = false;
 
         // Disable right-click context menu on canvas
         this.input.mouse.disableContextMenu();
@@ -149,42 +193,38 @@ class GameScene extends Phaser.Scene {
 
         // Keyboard input (spacebar)
         this.input.keyboard.on('keydown', () => {
-            if (!this.spaceKeyPressed) {
-                this.spaceKeyPressed = true;
+            if (!this.anyKeyPressed) {
+                this.anyKeyPressed = true;
                 this.playSlapAnimation();
             }
         });
 
         // Reset flag when spacebar released
         this.input.keyboard.on('keyup', () => {
-            this.spaceKeyPressed = false;
+            this.anyKeyPressed = false;
         });
     }
 
     // Main slap animation - synchronized hand + cheek
     playSlapAnimation() {
-        if (this.isSlapping) return; // Don't allow overlapping animations
+        if (this.isSlapping || this.isResetting) return; // Don't allow overlapping animations
 
         this.isSlapping = true;
         console.log('Slap animation started');
 
         // Track this slap
-        this.score++;
-        this.scoreText.setText(`Score: ${this.score}`);
+        this.totalScore++;
+        this.scoreText.setText(`Press any key to correct this red panda.\n${this.totalScore} Hit!`);
         this.clickTimestamps.push(Date.now());
 
-        // Check if new high score
-        if (this.score > this.highScore) {
-            this.highScore = this.score;
-            this.highScoreText.setText(`High Score: ${this.highScore}`);
-            localStorage.setItem('slapGameHighScore', this.highScore.toString());
-        }
+        // Save to localStorage immediately
+        localStorage.setItem('slapGameTotalScore', this.totalScore.toString());
 
         // Calculate animation speed based on current APS
         const currentAPS = this.calculateAPS();
         const frameDuration = this.calculateFrameDuration(currentAPS);
 
-        console.log(`Slap! Score: ${this.score}, APS: ${currentAPS}, Frame Duration: ${frameDuration}ms`);
+        console.log(`Slap! Score: ${this.totalScore}, APS: ${currentAPS}, Frame Duration: ${frameDuration}ms`);
 
         const cheekX = 630;
         const cheekY = 504;
@@ -275,7 +315,7 @@ class GameScene extends Phaser.Scene {
     update(time, delta) {
         // Calculate and display current APS
         const currentAPS = this.calculateAPS();
-        this.apsText.setText(`APS: ${currentAPS}`);
+        this.apsText.setText(`(${currentAPS} APS)`);
 
         // Clean up old timestamps (keep only last 2 seconds)
         const twoSecondsAgo = Date.now() - 2000;
