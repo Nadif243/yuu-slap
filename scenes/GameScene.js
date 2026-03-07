@@ -104,6 +104,23 @@ class GameScene extends Phaser.Scene {
             padding: { x: 10, y: 5 }
         });
 
+        // Reset button
+        const resetBtn = this.add.text(20, 135, '[Reset High Score]', {
+            fontSize: '14px',
+            color: '#ff6666',
+            backgroundColor: '#000000',
+            padding: { x: 5, y: 3 }
+        });
+        resetBtn.setInteractive({ useHandCursor: true });
+        resetBtn.on('pointerdown', () => {
+            localStorage.removeItem('slapGameHighScore');
+            this.highScore = 0;
+            this.highScoreText.setText('High Score: 0');
+            console.log('High score reset!');
+        });
+        resetBtn.on('pointerover', () => resetBtn.setColor('#ff0000'));
+        resetBtn.on('pointerout', () => resetBtn.setColor('#ff6666'));
+
         this.apsText = this.add.text(20, 60, 'APS: 0', {
             fontSize: '24px',
             color: '#ffff00',

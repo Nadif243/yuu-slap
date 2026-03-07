@@ -5,7 +5,7 @@ const config = {
     height: 720,
     parent: 'game-container',
     backgroundColor: '#34495e',
-    scene: [GameScene], // The game scene(s)
+    scene: [StartScene, GameScene], // Start with StartScene, then GameScene
     scale: {
         mode: Phaser.Scale.FIT, // Scale to fit container while maintaining aspect ratio
         autoCenter: Phaser.Scale.CENTER_BOTH
