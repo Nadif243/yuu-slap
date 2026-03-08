@@ -358,6 +358,8 @@ class GameScene extends Phaser.Scene {
     playSlapAnimation() {
         console.log('Slap animation started');
 
+        if (this.isResetting) return;
+
         // Don't block at high APS - allow instant response
         const currentAPS = this.calculateAPS();
 
@@ -413,7 +415,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // MEDIUM/LOW APS MODE: Full animation with blocking
-        if (this.isSlapping || this.isResetting) return; // Don't allow overlapping animations, Only block for slow animations
+        if (this.isSlapping) return; // Don't allow overlapping animations, Only block for slow animations
         this.isSlapping = true;
 
         // Calculate animation speed based on current APS
