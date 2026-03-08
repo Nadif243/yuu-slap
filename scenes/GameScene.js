@@ -356,31 +356,71 @@ class GameScene extends Phaser.Scene {
 
     // Main slap animation - synchronized hand + cheek
     playSlapAnimation() {
-        if (this.isSlapping || this.isResetting) return; // Don't allow overlapping animations
-
-        this.isSlapping = true;
         console.log('Slap animation started');
 
-        // Track this slap
+        // Don't block at high APS - allow instant response
+        const currentAPS = this.calculateAPS();
+
+        // Increment score immediately
         this.totalScore++;
         this.scoreText.setText(`Press any key to correct this red panda.\n${this.totalScore} Hit!`);
         this.clickTimestamps.push(Date.now());
-
         // Save to localStorage immediately
         localStorage.setItem('slapGameTotalScore', this.totalScore.toString());
 
         // Play slap SFX
         this.slapSfx.play();
 
-        // Calculate animation speed based on current APS
-        const currentAPS = this.calculateAPS();
-        const frameDuration = this.calculateFrameDuration(currentAPS);
-
-        console.log(`Slap! Score: ${this.totalScore}, APS: ${currentAPS}, Frame Duration: ${frameDuration}ms`);
-
         const cheekX = 630;
         const cheekY = 504;
 
+        // Clear any pending reset timers
+        if (this.resetTimer) {
+            this.resetTimer.remove();
+        }
+
+        // HIGH APS MODE (>12): Just flash frames, no sequential animation
+        if (currentAPS > 12) {
+            // Cancel any ongoing animation
+            this.isSlapping = false;
+
+            // Hide everything first
+            this.handFrames.forEach(h => h.setVisible(false));
+            this.cheekFrames.forEach(c => c.setVisible(false));
+
+            // Randomly pick frame: 70% hand-0, 30% hand-1
+            const showImpact = Math.random() < 0.3;
+
+            if (showImpact) {
+                this.handFrames[1].setOrigin(1, 1);
+                this.handFrames[1].setPosition(cheekX, 720);
+                this.handFrames[1].setVisible(true);
+                this.cheekFrames[2].setVisible(true);
+            } else {
+                this.handFrames[0].setOrigin(0, 1);
+                this.handFrames[0].setPosition(0, 720);
+                this.handFrames[0].setVisible(true);
+                this.cheekFrames[1].setVisible(true);
+            }
+
+            // Reset after brief flash
+            this.resetTimer = this.time.delayedCall(30, () => {
+                this.handFrames.forEach(h => h.setVisible(false));
+                this.cheekFrames.forEach(c => c.setVisible(false));
+                this.cheekFrames[1].setVisible(true);
+            });
+
+            return; // Skip normal animation
+        }
+
+        // MEDIUM/LOW APS MODE: Full animation with blocking
+        if (this.isSlapping || this.isResetting) return; // Don't allow overlapping animations, Only block for slow animations
+        this.isSlapping = true;
+
+        // Calculate animation speed based on current APS
+        const frameDuration = this.calculateFrameDuration(currentAPS);
+
+        console.log(`Slap! Score: ${this.totalScore}, APS: ${currentAPS}, Frame Duration: ${frameDuration}ms`);
 
         // FRAME 1: No hand + cheek-0
         this.cheekFrames[this.currentCheekFrame].setVisible(false);
@@ -486,11 +526,11 @@ class GameScene extends Phaser.Scene {
     calculateFrameDuration(currentAPS) {
         // At high APS, skip frames to speed up
         if (currentAPS > 10) {
-            return 5; // Super fast, will skip frames at engine level
+            return 10; // Super fast, will skip frames at engine level
         } else if (currentAPS > 8) {
-            return 10;
-        } else if (currentAPS > 5) {
             return 15;
+        } else if (currentAPS > 5) {
+            return 20;
         } else {
             return 30;
         }
