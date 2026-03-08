@@ -10,6 +10,9 @@ class StartScene extends Phaser.Scene {
     }
 
     create() {
+        // Disable right-click context menu
+        this.input.mouse.disableContextMenu();
+
         // ===== BACKGROUND =====
         const bg = this.add.image(640, 360, 'background');
         bg.setDisplaySize(1280, 720);
@@ -60,10 +63,16 @@ class StartScene extends Phaser.Scene {
     }
 
     startGame() {
-        // Fade out and switch to game scene
-        this.cameras.main.fadeOut(300, 0, 0, 0);
+        // Start fading out
+        this.cameras.main.fadeOut(300, 0, 0, 0); // Reduced to 200ms for faster feel
+
+        // Start loading GameScene immediately (parallel)
+        this.scene.launch('GameScene'); // Launch instead of start
+
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.start('GameScene');
+            // Once fade done, switch to GameScene
+            this.scene.stop('StartScene');
+            this.scene.bringToTop('GameScene');
         });
     }
 }
