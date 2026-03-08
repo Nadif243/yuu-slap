@@ -7,7 +7,7 @@ class GameScene extends Phaser.Scene {
         // Load all assets
         this.load.image('background', 'assets/images/background.png');
         this.load.image('character-idle-1', 'assets/images/character-idle-1.png');
-        this.load.image('character-idle-2', 'assets/images/character-idle-1.png'); // Temp: same as idle-1
+        this.load.image('character-idle-2', 'assets/images/character-idle-2.png'); // Temp: same as idle-1
         this.load.image('cheek-0', 'assets/images/cheek-0.png');
         this.load.image('cheek-1', 'assets/images/cheek-1.png');
         this.load.image('cheek-2', 'assets/images/cheek-2.png');
@@ -65,7 +65,7 @@ class GameScene extends Phaser.Scene {
 
         // ===== CHEEKS =====
         const cheekX = 630;
-        const cheekY = 504;
+        const cheekY = 420;
         const cheekScale = 720 / 927;
 
         this.cheekFrames = [];
@@ -372,7 +372,6 @@ class GameScene extends Phaser.Scene {
         this.slapSfx.play();
 
         const cheekX = 630;
-        const cheekY = 504;
 
         // Clear any pending reset timers
         if (this.resetTimer) {
