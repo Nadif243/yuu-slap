@@ -16,6 +16,11 @@ class GameScene extends Phaser.Scene {
         this.load.image('hand-0', 'assets/images/hand-0.png');
         this.load.image('hand-1', 'assets/images/hand-1.png');
         this.load.image('hand-2', 'assets/images/hand-2.png');
+        this.load.image('volume-icon', 'assets/images/volume-icon.png');
+
+        // Load audio
+        this.load.audio('bgm', 'assets/audio/bgm.mp3');
+        this.load.audio('slap-sfx', 'assets/audio/slap.wav');
 
         console.log('Loading all assets...');
     }
@@ -87,11 +92,22 @@ class GameScene extends Phaser.Scene {
 
         console.log('✓ All visuals loaded');
 
+        // ===== AUDIO =====
+        // Load saved volumes or use defaults
+        const savedBgmVolume = parseFloat(localStorage.getItem('bgmVolume')) || 0.5;
+        const savedSfxVolume = parseFloat(localStorage.getItem('sfxVolume')) || 0.7;
+
+        this.bgm = this.sound.add('bgm', { loop: true, volume: savedBgmVolume });
+        this.bgm.play();
+
+        this.slapSfx = this.sound.add('slap-sfx', { volume: savedSfxVolume });
+        this.sfxVolume = savedSfxVolume;
+
         // ===== UI ELEMENTS =====
         // Score display
         const scoreBg = this.add.graphics();
         scoreBg.fillStyle(0x000000, 0.67); // 0.67 alpha = aa in hex
-        scoreBg.fillRoundedRect(12, 10, 500, 90, 10); // x, y, width, height, radius
+        scoreBg.fillRoundedRect(12, 10, 570, 90, 10); // x, y, width, height, radius
         this.scoreText = this.add.text(20, 13, `Press any key to correct this red panda.\n${this.totalScore} Hit!`, {
             fontSize: '28px',
             fontFamily: 'Quicksand, sans-serif',
@@ -167,8 +183,141 @@ class GameScene extends Phaser.Scene {
             });
         });
 
+        // ===== VOLUME CONTROLS =====
+
+        // Volume button background (rounded)
+        const volumeBtnBg = this.add.graphics();
+        volumeBtnBg.setDepth(10);
+        volumeBtnBg.fillStyle(0x444444, 1);
+        volumeBtnBg.fillRoundedRect(260, 670, 50, 35, 10);
+        volumeBtnBg.lineStyle(2, 0x666666, 1);
+        volumeBtnBg.strokeRoundedRect(260, 670, 50, 35, 10);
+
+        // Volume icon image
+        const volumeIcon = this.add.image(285, 687.5, 'volume-icon');
+        volumeIcon.setDisplaySize(24, 24); // Adjust size as needed
+        volumeIcon.setDepth(11);
+
+        // Volume button hitbox
+        const volumeBtnHitbox = this.add.rectangle(285, 687.5, 50, 35, 0x000000, 0);
+        volumeBtnHitbox.setDepth(12)
+        volumeBtnHitbox.setInteractive({ useHandCursor: true });
+
+        // Volume panel (initially hidden)
+        this.volumePanelVisible = false;
+
+        // Panel background
+        this.volumePanel = this.add.graphics();
+        this.volumePanel.setDepth(100); // Appear above everything
+        this.volumePanel.setVisible(false);
+
+        // Panel content container
+        this.volumePanelContent = this.add.container(0, 0);
+        this.volumePanelContent.setDepth(101);
+        this.volumePanelContent.setVisible(false);
+
+        // Draw panel background
+        this.volumePanel.fillStyle(0x000000, 0.9);
+        this.volumePanel.fillRoundedRect(20, 570, 290, 90, 10); // Left edge to right of button
+        this.volumePanel.lineStyle(2, 0x666666, 1);
+        this.volumePanel.strokeRoundedRect(20, 570, 290, 90, 10);
+
+        // BGM label
+        const bgmLabel = this.add.text(35, 585, 'BGM:', {
+            fontSize: '18px',
+            fontFamily: 'Trebuchet MS, sans-serif',
+            color: '#ffffff'
+        });
+
+        // BGM slider background
+        const bgmSliderBg = this.add.rectangle(90, 595, 200, 8, 0x333333);
+        bgmSliderBg.setOrigin(0, 0.5);
+
+        // BGM slider fill
+        this.bgmSliderFill = this.add.rectangle(90, 595, 100, 8, 0x4CAF50); // 50% default
+        this.bgmSliderFill.setOrigin(0, 0.5);
+
+        // BGM slider handle
+        this.bgmHandle = this.add.circle(190, 595, 8, 0xffffff);
+        this.bgmHandle.setInteractive({ useHandCursor: true, draggable: true });
+
+        // SFX label
+        const sfxLabel = this.add.text(35, 630, 'SFX:', {
+            fontSize: '18px',
+            fontFamily: 'Trebuchet MS, sans-serif',
+            color: '#ffffff'
+        });
+
+        // SFX slider background
+        const sfxSliderBg = this.add.rectangle(90, 640, 200, 8, 0x333333);
+        sfxSliderBg.setOrigin(0, 0.5);
+
+        // SFX slider fill
+        this.sfxSliderFill = this.add.rectangle(90, 640, 140, 8, 0x4CAF50); // 70% default
+        this.sfxSliderFill.setOrigin(0, 0.5);
+
+        // SFX slider handle
+        this.sfxHandle = this.add.circle(230, 640, 8, 0xffffff);
+        this.sfxHandle.setInteractive({ useHandCursor: true, draggable: true });
+
+        // Add all to container
+        this.volumePanelContent.add([
+            bgmLabel, bgmSliderBg, this.bgmSliderFill, this.bgmHandle,
+            sfxLabel, sfxSliderBg, this.sfxSliderFill, this.sfxHandle
+        ]);
+
+        // Volume button click handler
+        volumeBtnHitbox.on('pointerdown', (pointer) => {
+            pointer.event.stopPropagation();
+            this.toggleVolumePanel();
+        });
+
+        // BGM slider drag
+        this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+            if (gameObject === this.bgmHandle) {
+                const clampedX = Phaser.Math.Clamp(dragX, 90, 290);
+                this.bgmHandle.x = clampedX;
+                const fillWidth = clampedX - 90;
+                this.bgmSliderFill.width = fillWidth;
+
+                // Update BGM volume (0 to 1)
+                const volume = fillWidth / 200;
+                if (this.bgm) {
+                    this.bgm.setVolume(volume);
+                }
+                localStorage.setItem('bgmVolume', volume.toString());
+            }
+
+            if (gameObject === this.sfxHandle) {
+                const clampedX = Phaser.Math.Clamp(dragX, 90, 290);
+                this.sfxHandle.x = clampedX;
+                const fillWidth = clampedX - 90;
+                this.sfxSliderFill.width = fillWidth;
+
+                // Update SFX volume (0 to 1)
+                const volume = fillWidth / 200;
+                if (this.slapSfx) {
+                    this.slapSfx.setVolume(volume);
+                }
+                localStorage.setItem('sfxVolume', volume.toString());
+            }
+        });
+
+        // Click outside to close panel
+        this.input.on('pointerdown', (pointer) => {
+            if (this.volumePanelVisible) {
+                const bounds = new Phaser.Geom.Rectangle(20, 570, 290, 110);
+                const btnBounds = new Phaser.Geom.Rectangle(260, 670, 50, 35);
+
+                if (!bounds.contains(pointer.x, pointer.y) && !btnBounds.contains(pointer.x, pointer.y)) {
+                    this.toggleVolumePanel();
+                }
+            }
+        });
+
         // Instruction text
         const instructionBg = this.add.graphics();
+        instructionBg.setDepth(0)
         instructionBg.fillStyle(0x000000, 0.67);
         instructionBg.fillRoundedRect(12, 670, 240, 35, 10);
         this.add.text(20, 673, 'Click or press any key to slap', {
@@ -220,6 +369,9 @@ class GameScene extends Phaser.Scene {
         // Save to localStorage immediately
         localStorage.setItem('slapGameTotalScore', this.totalScore.toString());
 
+        // Play slap SFX
+        this.slapSfx.play();
+
         // Calculate animation speed based on current APS
         const currentAPS = this.calculateAPS();
         const frameDuration = this.calculateFrameDuration(currentAPS);
@@ -228,6 +380,7 @@ class GameScene extends Phaser.Scene {
 
         const cheekX = 630;
         const cheekY = 504;
+
 
         // FRAME 1: No hand + cheek-0
         this.cheekFrames[this.currentCheekFrame].setVisible(false);
@@ -331,19 +484,21 @@ class GameScene extends Phaser.Scene {
     }
 
     calculateFrameDuration(currentAPS) {
-        // Base: 100ms per frame at 0 APS (600ms total animation)
-        // Min: 20ms per frame at high APS (120ms total animation)
+        // At high APS, skip frames to speed up
+        if (currentAPS > 10) {
+            return 5; // Super fast, will skip frames at engine level
+        } else if (currentAPS > 8) {
+            return 10;
+        } else if (currentAPS > 5) {
+            return 15;
+        } else {
+            return 30;
+        }
+    }
 
-        const baseDuration = 100;
-        const minDuration = 20;
-        const speedFactor = 20; // How much each APS point reduces duration
-
-        // Higher APS = shorter frame duration = faster animation
-        const duration = Math.max(
-            minDuration,
-            baseDuration - (currentAPS * speedFactor)
-        );
-
-        return duration;
+    toggleVolumePanel() {
+        this.volumePanelVisible = !this.volumePanelVisible;
+        this.volumePanel.setVisible(this.volumePanelVisible);
+        this.volumePanelContent.setVisible(this.volumePanelVisible);
     }
 }
