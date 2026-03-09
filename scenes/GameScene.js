@@ -66,7 +66,7 @@ class GameScene extends Phaser.Scene {
         // ===== CHEEKS =====
         const cheekX = 630;
         const cheekY = 420;
-        const cheekScale = 720 / 927;
+        const cheekScale = 1;
 
         this.cheekFrames = [];
         for (let i = 0; i < 5; i++) {
@@ -83,9 +83,10 @@ class GameScene extends Phaser.Scene {
 
         // Create all 3 hand frames, initially hidden
         this.handFrames = [];
+        const handScales = [1.4, 1.0, 0.8]; // Adjust per frame
         for (let i = 0; i < 3; i++) {
             const hand = this.add.image(0, 0, `hand-${i}`);
-            hand.setScale(handScale);
+            hand.setScale(handScale * handScales[i]);
             hand.setVisible(false);
             this.handFrames.push(hand);
         }
@@ -432,7 +433,7 @@ class GameScene extends Phaser.Scene {
         this.time.delayedCall(frameDuration, () => {
             // Position hand-0: left side of screen, bottom-aligned
             // hand-0 is 350x860, scaled to ~272x669
-            const hand0X = 0; // Left edge (will adjust based on anchor)
+            const hand0X = -40; // Left edge (will adjust based on anchor)
             const hand0Y = 720; // Bottom of screen
 
             this.handFrames[0].setOrigin(0, 1); // Bottom-left anchor
