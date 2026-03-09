@@ -4,9 +4,25 @@ class StartScene extends Phaser.Scene {
     }
 
     preload() {
-        // Load background for start screen
+        // Load all assets right away
         this.load.image('background', 'assets/images/background.png');
         this.load.image('character-idle-1', 'assets/images/character-idle-1.png');
+        this.load.image('character-idle-2', 'assets/images/character-idle-2.png');
+        this.load.image('cheek-0', 'assets/images/cheek-0.png');
+        this.load.image('cheek-1', 'assets/images/cheek-1.png');
+        this.load.image('cheek-2', 'assets/images/cheek-2.png');
+        this.load.image('cheek-3', 'assets/images/cheek-3.png');
+        this.load.image('cheek-4', 'assets/images/cheek-4.png');
+        this.load.image('hand-0', 'assets/images/hand-0.png');
+        this.load.image('hand-1', 'assets/images/hand-1.png');
+        this.load.image('hand-2', 'assets/images/hand-2.png');
+        this.load.image('volume-icon', 'assets/images/volume-icon.png');
+
+        // Load audio
+        this.load.audio('bgm', 'assets/audio/bgm.mp3');
+        this.load.audio('slap-sfx', 'assets/audio/slap.wav');
+
+        console.log('Loading all assets...');
     }
 
     create() {
@@ -39,8 +55,8 @@ class StartScene extends Phaser.Scene {
         // ===== INSTRUCTION =====
         const instructionBg = this.add.graphics();
         instructionBg.fillStyle(0x000000, 0.67);
-        instructionBg.fillRoundedRect(520, 470, 240, 64, 10);
-        const instruction = this.add.text(640, 500, 'Click to start', {
+        instructionBg.fillRoundedRect(450, 470, 380, 64, 10);
+        const instruction = this.add.text(640, 500, 'Click anywhere to start', {
             fontSize: '32px',
             fontFamily: 'Quicksand, sans-serif',
             color: '#ffffff',
@@ -63,16 +79,11 @@ class StartScene extends Phaser.Scene {
     }
 
     startGame() {
-        // Start fading out
-        this.cameras.main.fadeOut(300, 0, 0, 0); // Reduced to 200ms for faster feel
-
-        // Start loading GameScene immediately (parallel)
-        this.scene.launch('GameScene'); // Launch instead of start
+        // Fade out
+        this.cameras.main.fadeOut(200, 0, 0, 0);
 
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            // Once fade done, switch to GameScene
-            this.scene.stop('StartScene');
-            this.scene.bringToTop('GameScene');
+            this.scene.start('GameScene');
         });
     }
 }
